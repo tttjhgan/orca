@@ -16,6 +16,10 @@ import {
 } from './browser-host-state'
 import { ensureBrowserClientHostsForRestoredPages } from '@/runtime/restored-client-hosted-browser-host-attach'
 import { normalizeBrowserHistoryEntries } from '../../../../../shared/workspace-session-browser-history'
+import {
+  backfillWebConversationsFromBrowserHistory,
+  normalizeWebConversationHistoryEntries
+} from '../../../../../shared/workspace-session-web-conversations'
 import { normalizeWorkspaceDocHistoryEntries } from '../../../../../shared/workspace-doc-history'
 
 export function createBrowserHydrationActions(
@@ -196,6 +200,15 @@ export function createBrowserHydrationActions(
           )
         })()
 
+        const browserUrlHistory = normalizeBrowserHistoryEntries(session.browserUrlHistory ?? [])
+        // Why the backfill sits here and not at the write path: this is the only moment both lists
+        // are in hand, and the conversations the browsing history can still recover are exactly the
+        // ones recorded before the conversation list existed.
+        const webConversationHistory = backfillWebConversationsFromBrowserHistory(
+          normalizeWebConversationHistoryEntries(session.webConversationHistory ?? []),
+          browserUrlHistory
+        )
+
         return {
           browserTabsByWorktree,
           browserPagesByWorkspace,
@@ -208,7 +221,8 @@ export function createBrowserHydrationActions(
           browserCertificateFailuresByPageId: {},
           browserAnnotationsByPageId: {},
           browserAnnotationMarkerIdsByPageId: {},
-          browserUrlHistory: normalizeBrowserHistoryEntries(session.browserUrlHistory ?? []),
+          browserUrlHistory,
+          webConversationHistory,
           workspaceDocHistory: normalizeWorkspaceDocHistoryEntries(
             session.workspaceDocHistory ?? []
           ),

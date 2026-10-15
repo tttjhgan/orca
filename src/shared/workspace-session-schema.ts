@@ -26,6 +26,7 @@ import { isWorkspaceKey } from './workspace-scope'
 import {
   browserHistoryEntriesSchema,
   workspaceDocHistoryEntriesSchema,
+  webConversationHistoryEntriesSchema,
   browserPageSchema,
   browserWorkspaceSchema
 } from './workspace-session-browser-schema'
@@ -266,6 +267,10 @@ export const workspaceSessionStateSchema: z.ZodType<WorkspaceSessionState> = z.o
     salvagingRecord(worktreeIdSchema, workspaceVisibleTabTypeSchema)
   ),
   browserUrlHistory: salvagedOptional('browserUrlHistory', browserHistoryEntriesSchema),
+  webConversationHistory: salvagedOptional(
+    'webConversationHistory',
+    webConversationHistoryEntriesSchema
+  ),
   workspaceDocHistory: salvagedOptional('workspaceDocHistory', workspaceDocHistoryEntriesSchema),
   activeTabIdByWorktree: salvagedOptional(
     'activeTabIdByWorktree',

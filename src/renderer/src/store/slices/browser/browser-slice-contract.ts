@@ -249,6 +249,12 @@ export type BrowserSlice = {
   ) => Promise<BrowserCookieImportExecutionResult>
   clearDefaultSessionCookies: () => Promise<boolean>
   browserUrlHistory: BrowserHistoryEntry[]
+  /**
+   * Web-AI conversations the user opened in the built-in browser — a registered site on a
+   * conversation path. Kept apart from `browserUrlHistory` so ordinary browsing cannot churn it
+   * out; `addBrowserHistoryEntry` is the one write that feeds both.
+   */
+  webConversationHistory: BrowserHistoryEntry[]
   addBrowserHistoryEntry: (url: string, title: string, faviconUrl?: string | null) => void
   workspaceDocHistory: WorkspaceDocHistoryEntry[]
   /** A visit bumps recency and count; a title-only refresh (bump: false) renames the row. */
