@@ -104,6 +104,13 @@ export type WorkspaceSessionState = {
   activeTabTypeByWorktree?: Record<string, WorkspaceVisibleTabType>
   /** Global browser URL history for address bar autocomplete. */
   browserUrlHistory?: BrowserHistoryEntry[]
+  /**
+   * Web-AI conversations — a registered site, on a path that is a conversation rather than
+   * site furniture. Deliberately a list of its own rather than a filter over
+   * `browserUrlHistory`: that list is capped and ordered by raw visit recency, so a heavy
+   * browsing day would evict a conversation the user still wants to find again.
+   */
+  webConversationHistory?: BrowserHistoryEntry[]
   /** Previewed workspace documents for the same dropdown — document identities, never URLs. */
   workspaceDocHistory?: WorkspaceDocHistoryEntry[]
   /** Per-worktree last-active terminal tab ID at shutdown. */

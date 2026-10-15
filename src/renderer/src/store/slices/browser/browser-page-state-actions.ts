@@ -10,6 +10,7 @@ import {
   normalizeUrl
 } from '../browser-page-records'
 import { normalizeBrowserHistoryUrl } from '../../../../../shared/workspace-session-browser-history'
+import { repairWebConversationFavicon } from '../../../../../shared/workspace-session-web-conversations'
 
 export function createBrowserPageStateActions(
   set: BrowserSliceSet,
@@ -102,14 +103,26 @@ export function createBrowserPageStateActions(
           }
         }
         if (updates.faviconUrl !== undefined && updates.faviconUrl !== page.faviconUrl) {
+          const repairedUrl = normalizeBrowserHistoryUrl(page.url)
           const historyIndex = s.browserUrlHistory.findIndex(
-            (entry) => entry.normalizedUrl === normalizeBrowserHistoryUrl(page.url)
+            (entry) => entry.normalizedUrl === repairedUrl
           )
           const historyEntry = s.browserUrlHistory[historyIndex]
           if (historyEntry && historyEntry.faviconUrl !== updates.faviconUrl) {
             nextState.browserUrlHistory = s.browserUrlHistory.map((entry, index) =>
               index === historyIndex ? { ...entry, faviconUrl: updates.faviconUrl } : entry
             )
+          }
+          // Why the conversation list is repaired too: a favicon arrives after the title update
+          // that recorded the conversation, so without this the board's card — and the site
+          // column's icon, taken from its most recent conversation — keep the globe fallback.
+          const repairedConversations = repairWebConversationFavicon(
+            s.webConversationHistory,
+            repairedUrl,
+            updates.faviconUrl
+          )
+          if (repairedConversations !== s.webConversationHistory) {
+            nextState.webConversationHistory = repairedConversations
           }
         }
         if (!browserWorkspaceMirrorFieldsEqual(workspace, nextWorkspace)) {

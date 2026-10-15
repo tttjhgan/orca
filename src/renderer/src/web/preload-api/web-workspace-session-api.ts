@@ -59,7 +59,16 @@ export function getStoredWorkspaceSession(hostId?: string | null): WorkspaceSess
     ...getDefaultWorkspaceSession(),
     activeRepoId: ui.lastActiveRepoId,
     activeWorktreeId: ui.lastActiveWorktreeId,
-    lastVisitedAtByWorktreeId: localSession.lastVisitedAtByWorktreeId
+    lastVisitedAtByWorktreeId: localSession.lastVisitedAtByWorktreeId,
+    // Why the two history lists are carried across rather than defaulted with the rest: the reason
+    // for rebuilding is the *handles* above, which name a browser-local terminal that a new pairing
+    // must not replay. A history list is not a handle — nothing in it points at a process. Dropping
+    // it here also erased it on disk, because `patch` writes `{ ...getStoredWorkspaceSession(),
+    // ...patch }`: the base is this object, so the next unrelated write persisted the default `[]`
+    // over what was stored. That emptied the paired client's sessions board and its address-bar
+    // history at once.
+    browserUrlHistory: localSession.browserUrlHistory,
+    webConversationHistory: localSession.webConversationHistory
   })
 }
 

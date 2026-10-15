@@ -4,7 +4,7 @@ import type {
   WorkspaceSessionState
 } from '../../../shared/workspace-session-state-types'
 import { LOCAL_EXECUTION_HOST_ID, type ExecutionHostId } from '../../../shared/execution-host'
-import { pruneWorkspaceSessionBrowserHistory } from '../../../shared/workspace-session-browser-history'
+import { pruneWorkspaceSessionHistoryLists } from '../../../shared/workspace-session-web-conversations'
 
 import { workspaceSessionPatchNeedsFullNormalization } from './terminal-session-cleanup'
 
@@ -101,8 +101,11 @@ export class SessionSnapshotOperations {
       this.setWorkspaceSession(next, resolved)
       return
     }
-    if (Object.hasOwn(patch, 'browserUrlHistory')) {
-      next = pruneWorkspaceSessionBrowserHistory(next)
+    if (
+      Object.hasOwn(patch, 'browserUrlHistory') ||
+      Object.hasOwn(patch, 'webConversationHistory')
+    ) {
+      next = pruneWorkspaceSessionHistoryLists(next)
     }
     // Why: a unified-tabs patch skips full normalization, so it would bypass the close fence.
     if (Object.hasOwn(patch, 'unifiedTabs')) {

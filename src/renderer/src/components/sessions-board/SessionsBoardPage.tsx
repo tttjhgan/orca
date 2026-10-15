@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from 'react'
+import { useCallback, useEffect, useMemo, useState } from 'react'
 import { Loader2, RefreshCw, TriangleAlert, X } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -7,16 +7,26 @@ import { translate } from '@/i18n/i18n'
 import { useAppStore } from '@/store'
 import type { AiVaultSession } from '../../../../shared/ai-vault-types'
 import { SessionsBoardColumn } from './SessionsBoardColumn'
+import { SessionsBoardNewConversationMenu } from './SessionsBoardNewConversationMenu'
+import { SessionsBoardWebColumn } from './SessionsBoardWebColumn'
 import { SessionsConversationOverlay } from './SessionsConversationOverlay'
+import { buildSessionsBoardWebColumns } from './sessions-board-web-columns'
 import { useSessionsBoardCardAvailability } from './use-sessions-board-card-availability'
 import { useSessionsBoardColumns } from './use-sessions-board-columns'
 import { useSessionsBoardSessionActions } from './use-sessions-board-session-actions'
+import { useSessionsBoardWebActions } from './use-sessions-board-web-actions'
 
 // Why a module constant: an empty Set literal would be a new identity each render and
-// restart any consumer keyed on it. Keyed by `SessionsBoardColumn.agent`.
+// restart any consumer keyed on it. Keyed by `SessionsBoardColumn.agent` for an agent
+// column and by `SessionsBoardWebColumn.columnKey` for a web one — which is namespaced,
+// because an agent id and a site id can be the same string.
 const EMPTY_SET: ReadonlySet<string> = new Set()
 
-/** Every agent session on this machine, one column per agent type. */
+/**
+ * Every agent session on this machine, one column per agent type — and, beside them, one column
+ * per web AI site the user has talked to in Orca's own browser, so a conversation held with a web
+ * AI is findable on the same board as the agents it might be handed to.
+ */
 export default function SessionsBoardPage(): React.JSX.Element {
   const closeSessionsPage = useAppStore((state) => state.closeSessionsPage)
   const [query, setQuery] = useState('')
@@ -27,6 +37,15 @@ export default function SessionsBoardPage(): React.JSX.Element {
     query,
     hideEmptySessions
   })
+  const webConversationHistory = useAppStore((state) => state.webConversationHistory)
+  // Why a separate selector and not the session scan: this list is machine-wide browsing state
+  // that changes as pages are visited, and folding it into `useSessionsBoardColumns` would re-run
+  // the agent scan behind every unrelated page load.
+  const webColumns = useMemo(
+    () => buildSessionsBoardWebColumns(webConversationHistory, { query }),
+    [query, webConversationHistory]
+  )
+  const webActions = useSessionsBoardWebActions()
   // Why the raw `sessions` and not `columns`: availability is keyed on that array's identity,
   // so deriving it from the filtered columns would re-run cwd matching on every keystroke.
   const availabilityById = useSessionsBoardCardAvailability(sessions)
@@ -60,11 +79,13 @@ export default function SessionsBoardPage(): React.JSX.Element {
   usePageEscape(closeTopmost)
 
   const isSearching = query.trim().length > 0
-  // The scan is machine-wide and deliberately uncapped, so it is slow on a busy machine and can
-  // fail on one directory; both states are local to the columns it feeds.
+  // The agent half's own state, which is not the whole board's: the scan is machine-wide and
+  // deliberately uncapped, so it is slow on a busy machine and can fail on one directory.
   const scanPending = loading && columns.length === 0
   const agentColumnsVisible = !error && !scanPending
-  const isEmpty = !loading && !error && columns.length === 0
+  // A web column only exists once its site has a conversation, so an empty board still reaches the
+  // empty state even with the registry fully populated.
+  const isEmpty = !loading && !error && columns.length === 0 && webColumns.length === 0
 
   return (
     <main className="relative flex h-full min-h-0 flex-1 flex-col bg-background pt-5 text-foreground md:pt-6">
@@ -80,6 +101,7 @@ export default function SessionsBoardPage(): React.JSX.Element {
             </h1>
           </div>
           <div className="ml-auto flex items-center gap-1.5">
+            <SessionsBoardNewConversationMenu actions={webActions} />
             <Tooltip>
               <TooltipTrigger asChild>
                 <Button
@@ -130,6 +152,9 @@ export default function SessionsBoardPage(): React.JSX.Element {
         </div>
       </header>
 
+      {/* Why the notice no longer replaces the board: the web conversation half is browsing
+          history that owes nothing to the agent scan, and a failed scan used to put it out of
+          reach. The banner states the failure; the columns that can still be drawn are drawn. */}
       {error ? (
         <BoardNotice
           message={translate('sessionsBoard.loadFailed', 'The session scan failed: {{error}}', {
@@ -139,21 +164,34 @@ export default function SessionsBoardPage(): React.JSX.Element {
         />
       ) : null}
 
-      {agentColumnsVisible && columns.length > 0 ? (
+      {(agentColumnsVisible && columns.length > 0) || webColumns.length > 0 ? (
         <div className="scrollbar-sleek flex min-h-0 flex-1 items-stretch overflow-x-auto p-3">
           {/* items-stretch is what bounds each column, so its card list — not the page — scrolls. */}
           <div className="mx-auto flex w-full max-w-[1600px] items-stretch gap-3">
-            {columns.map((column) => (
-              <SessionsBoardColumn
-                key={column.agent}
+            {agentColumnsVisible
+              ? columns.map((column) => (
+                  <SessionsBoardColumn
+                    key={column.agent}
+                    column={column}
+                    collapsed={collapsedColumns.has(column.agent)}
+                    availabilityById={availabilityById}
+                    onToggleCollapsed={() => toggleCollapsed(column.agent)}
+                    onOpenSession={setOpenSession}
+                    onCopy={onCopy}
+                    onJumpToWorkspace={jumpToSessionWorkspace}
+                    onResume={resumeSessionInTerminal}
+                  />
+                ))
+              : null}
+            {/* Why after the agent columns: the agent half is what the board was built for, and a
+                site's conversations are the ones being handed *to* it. */}
+            {webColumns.map((column) => (
+              <SessionsBoardWebColumn
+                key={column.siteId}
                 column={column}
-                collapsed={collapsedColumns.has(column.agent)}
-                availabilityById={availabilityById}
-                onToggleCollapsed={() => toggleCollapsed(column.agent)}
-                onOpenSession={setOpenSession}
-                onCopy={onCopy}
-                onJumpToWorkspace={jumpToSessionWorkspace}
-                onResume={resumeSessionInTerminal}
+                collapsed={collapsedColumns.has(column.columnKey)}
+                onToggleCollapsed={() => toggleCollapsed(column.columnKey)}
+                actions={webActions}
               />
             ))}
           </div>

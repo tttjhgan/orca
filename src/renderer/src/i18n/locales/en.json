@@ -21253,6 +21253,26 @@
       "noPreview": "No conversation preview available.",
       "truncated": "Older messages fell outside the scan preview window and are not shown."
     },
+    "web": {
+      "card": {
+        "visitCount": "{{count}} visits",
+        "handOff": "Hand off to an agent",
+        "openInSystemBrowser": "Open in system browser",
+        "copyLink": "Copy link"
+      },
+      "newConversation": "New conversation",
+      "newConversationHint": "Open a fresh chat on a web AI site",
+      "newConversationSite": "Start a chat on",
+      "handOffLabel": "Web conversation",
+      "handOffNoWorkspace": "No workspace selected to hand off to.",
+      "prompt": {
+        "intro": "Read this {{site}} conversation and work from it:",
+        "urlLabel": "URL: {{url}}",
+        "titleLabel": "Title: {{title}}",
+        "readInstruction": "Open and read the whole page with the orca-cli browser commands (ORCA goto --url \"{{url}}\", then ORCA snapshot --json).",
+        "summarizeInstruction": "Summarize its conclusion, then continue with what I ask next."
+      }
+    },
     "navLabel": "Sessions"
   }
 }

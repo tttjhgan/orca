@@ -33,6 +33,7 @@ export const SESSION_FIELD_OWNERS = {
   pairedTerminalTabCloseIntentsByEnvironment: 'carried',
   activeTabTypeByWorktree: 'view',
   browserUrlHistory: 'carried',
+  webConversationHistory: 'carried',
   workspaceDocHistory: 'carried',
   activeTabIdByWorktree: 'view',
   unifiedTabs: 'layout',

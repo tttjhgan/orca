@@ -103,6 +103,7 @@ export const WORKSPACE_SESSION_FIELD_DISPOSITION = {
   },
   activeTabTypeByWorktree: { onRepoRemoval: 'prunedByOwnerKey', onTransfer: 'copiedByOwnerKey' },
   browserUrlHistory: { onRepoRemoval: 'notRepoScoped', onTransfer: 'notTransferred' },
+  webConversationHistory: { onRepoRemoval: 'notRepoScoped', onTransfer: 'notTransferred' },
   workspaceDocHistory: { onRepoRemoval: 'notRepoScoped', onTransfer: 'notTransferred' },
   activeTabIdByWorktree: { onRepoRemoval: 'prunedByOwnerKey', onTransfer: 'copiedByOwnerKey' },
   unifiedTabs: { onRepoRemoval: 'prunedByOwnerKey', onTransfer: 'copiedByBespokeRule' },

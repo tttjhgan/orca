@@ -7,6 +7,7 @@ import { ORCA_LAYOUT_OWNER_IS_MAIN } from '../../../../shared/layout-owner-switc
 import type { BrowserSessionProfile } from '../../../../shared/browser-workspace-types'
 import type { ManagedBrowserProfileOwner } from '../../../../shared/browser-profile-scope'
 import { layoutApplyTestTransport } from '@/runtime/layout-apply-test-transport.test-fixture'
+import { MAX_BROWSER_HISTORY_ENTRIES } from '../../../../shared/workspace-session-browser-history'
 import {
   createBrowserMockApi,
   createTestStore,
@@ -703,6 +704,84 @@ describe('createBrowserSlice floating tabs', () => {
     )
     expect(store.getState().pendingAddressBarFocusByTabId[tab.id]).toBe(true)
     expect(store.getState().activeTabType).toBe(activeTabTypeBeforeFloating)
+  })
+})
+
+describe('createBrowserSlice web conversation history', () => {
+  it('records a conversation in both lists from one visit', () => {
+    const store = createTestStore()
+
+    store
+      .getState()
+      .addBrowserHistoryEntry('https://chatgpt.com/c/68f0', 'Shipping a scheduler', 'fav.ico')
+
+    expect(store.getState().browserUrlHistory).toHaveLength(1)
+    expect(store.getState().webConversationHistory).toEqual([
+      {
+        url: 'https://chatgpt.com/c/68f0',
+        normalizedUrl: 'https://chatgpt.com/c/68f0',
+        title: 'Shipping a scheduler',
+        faviconUrl: 'fav.ico',
+        lastVisitedAt: expect.any(Number),
+        visitCount: 1
+      }
+    ])
+  })
+
+  it('records ordinary browsing in the browsing list alone', () => {
+    const store = createTestStore()
+
+    store.getState().addBrowserHistoryEntry('https://example.com/reading', 'A blog post')
+
+    expect(store.getState().browserUrlHistory).toHaveLength(1)
+    expect(store.getState().webConversationHistory).toEqual([])
+  })
+
+  it('leaves the browsing list to churn while a conversation keeps its own entry', () => {
+    const store = createTestStore()
+
+    store.getState().addBrowserHistoryEntry('https://chat.deepseek.com/a/chat/s/1', 'DeepSeek')
+    for (let index = 0; index < MAX_BROWSER_HISTORY_ENTRIES + 20; index += 1) {
+      store.getState().addBrowserHistoryEntry(`https://example.com/${index}`, `Page ${index}`)
+    }
+
+    expect(store.getState().browserUrlHistory).toHaveLength(MAX_BROWSER_HISTORY_ENTRIES)
+    expect(store.getState().browserUrlHistory.some((row) => row.title === 'DeepSeek')).toBe(false)
+    expect(store.getState().webConversationHistory.map((row) => row.title)).toEqual(['DeepSeek'])
+  })
+
+  it('bumps a re-visited conversation in place in both lists', () => {
+    const store = createTestStore()
+
+    store.getState().addBrowserHistoryEntry('https://chatgpt.com/c/68f0', 'First title')
+    store.getState().addBrowserHistoryEntry('https://chatgpt.com/c/68f0', 'Renamed')
+
+    expect(store.getState().webConversationHistory).toHaveLength(1)
+    expect(store.getState().webConversationHistory[0]).toMatchObject({
+      title: 'Renamed',
+      visitCount: 2
+    })
+    expect(store.getState().browserUrlHistory[0]).toMatchObject({ visitCount: 2 })
+  })
+
+  it('clears both lists together', () => {
+    const store = createTestStore()
+
+    store.getState().addBrowserHistoryEntry('https://chatgpt.com/c/68f0', 'A conversation')
+    store.getState().addBrowserHistoryEntry('https://example.com/reading', 'A blog post')
+    store.getState().clearBrowserHistory()
+
+    expect(store.getState().browserUrlHistory).toEqual([])
+    expect(store.getState().webConversationHistory).toEqual([])
+  })
+
+  it('never records the site home a new conversation starts from', () => {
+    const store = createTestStore()
+
+    store.getState().addBrowserHistoryEntry('https://chatgpt.com/', 'ChatGPT')
+
+    expect(store.getState().browserUrlHistory).toHaveLength(1)
+    expect(store.getState().webConversationHistory).toEqual([])
   })
 })
 

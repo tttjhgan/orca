@@ -438,6 +438,61 @@ describe('hydrateBrowserSession', () => {
     expect(s.activeBrowserTabIdByWorktree[wt]).toBeUndefined()
     expect(s.activeBrowserTabId).toBeNull()
   })
+
+  it('recovers conversations held before the conversation list existed from the browsing history', () => {
+    // Why at this level and not only in the pure unit: hydration is the one place both lists are in
+    // hand, and a load that never ran the backfill would leave the board showing only conversations
+    // visited after the update — which is the bug the backfill exists to fix.
+    const store = createTestStore()
+    const wt = 'repo1::/path/wt1'
+
+    store.setState({
+      repos: [
+        { id: 'repo1', path: '/repo1', displayName: 'Repo 1', badgeColor: '#000', addedAt: 0 }
+      ],
+      worktreesByRepo: {
+        repo1: [makeWorktree({ id: wt, repoId: 'repo1', path: '/path/wt1' })]
+      },
+      activeWorktreeId: wt
+    })
+
+    store.getState().hydrateBrowserSession({
+      activeRepoId: 'repo1',
+      activeWorktreeId: wt,
+      activeTabId: null,
+      tabsByWorktree: {},
+      terminalLayoutsByTabId: {},
+      browserTabsByWorktree: {},
+      activeBrowserTabIdByWorktree: {},
+      activeTabTypeByWorktree: {},
+      browserUrlHistory: [
+        {
+          url: 'https://chat.deepseek.com/a/chat/s/pre-existing',
+          normalizedUrl: 'https://chat.deepseek.com/a/chat/s/pre-existing',
+          title: 'Thread from before the update',
+          lastVisitedAt: 1_700_000_000_000,
+          visitCount: 3
+        },
+        {
+          url: 'https://example.com/docs',
+          normalizedUrl: 'https://example.com/docs',
+          title: 'Everyday browsing',
+          lastVisitedAt: 1_700_000_000_100,
+          visitCount: 1
+        }
+      ],
+      webConversationHistory: []
+    })
+
+    const s = store.getState()
+    expect(s.webConversationHistory?.map((row) => row.title)).toEqual([
+      'Thread from before the update'
+    ])
+    // The visit count and timestamp are the browsing entry's own record of the visit.
+    expect(s.webConversationHistory?.[0]?.visitCount).toBe(3)
+    // The browsing list is left alone: recovering a conversation does not reorder it.
+    expect(s.browserUrlHistory).toHaveLength(2)
+  })
 })
 
 describe('hydrateBrowserSession remote page handle seeding', () => {

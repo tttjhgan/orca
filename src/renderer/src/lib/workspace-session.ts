@@ -6,11 +6,13 @@ import type {
 } from '../../../shared/workspace-session-state-types'
 import { pruneLocalTerminalScrollbackBuffers } from '../../../shared/workspace-session-terminal-buffers'
 import { normalizeBrowserHistoryEntries } from '../../../shared/workspace-session-browser-history'
+import { normalizeWebConversationHistoryEntries } from '../../../shared/workspace-session-web-conversations'
 import { normalizeWorkspaceDocHistoryEntries } from '../../../shared/workspace-doc-history'
 import type { AppState } from '../store'
 import type { OpenFile } from '../store/slices/editor'
 import { buildPersistedUnifiedTabSessionData } from './workspace-session-unified-tabs'
 import { buildLastVisitedAtByWorktreeId } from './workspace-session-focus-recency'
+import { buildDefaultTerminalTabsAppliedByWorktreeId } from './workspace-session-default-terminal-tabs'
 import { buildSleepingAgentSessionData } from './workspace-session-sleeping-agents'
 import { buildActiveConnectionIdsAtShutdown } from './workspace-session-reconnect-targets'
 import { withoutStagedBrowserTabs } from './workspace-session-staged-browser-tabs'
@@ -47,6 +49,7 @@ export type WorkspaceSessionSnapshot = Pick<
   | 'activeBrowserTabIdByWorktree'
   | 'browserUrlHistory'
   | 'workspaceDocHistory'
+  | 'webConversationHistory'
   | 'remoteBrowserPageHandlesByPageId'
   | 'unifiedTabsByWorktree'
   | 'groupsByWorktree'
@@ -89,6 +92,7 @@ export const SESSION_RELEVANT_FIELDS = [
   'activeBrowserTabIdByWorktree',
   'browserUrlHistory',
   'workspaceDocHistory',
+  'webConversationHistory',
   'remoteBrowserPageHandlesByPageId',
   'unifiedTabsByWorktree',
   'groupsByWorktree',
@@ -324,6 +328,7 @@ export function buildWorkspaceSessionPayload(
     ),
     // Why: enforce the history storage cap here so stale renderer state can't make every write stringify an oversized legacy array.
     browserUrlHistory: normalizeBrowserHistoryEntries(snapshot.browserUrlHistory),
+    webConversationHistory: normalizeWebConversationHistoryEntries(snapshot.webConversationHistory),
     workspaceDocHistory: normalizeWorkspaceDocHistoryEntries(snapshot.workspaceDocHistory ?? []),
     // Why: persist only layouts backed by real tabs so a reload can't restore a blank split pane from the split-before-tab midpoint.
     ...buildPersistedUnifiedTabSessionData(snapshot),
@@ -334,11 +339,7 @@ export function buildWorkspaceSessionPayload(
     remoteSessionIdsByTabId: terminalSessionData.remoteSessionIdsByTabId,
     // Why: omit when empty so builds that never stamped focus-recency don't bloat the payload. See docs/cmd-j-empty-query-ordering.md.
     lastVisitedAtByWorktreeId: buildLastVisitedAtByWorktreeId(snapshot),
-    defaultTerminalTabsAppliedByWorktreeId:
-      snapshot.defaultTerminalTabsAppliedByWorktreeId &&
-      Object.keys(snapshot.defaultTerminalTabsAppliedByWorktreeId).length > 0
-        ? snapshot.defaultTerminalTabsAppliedByWorktreeId
-        : undefined,
+    defaultTerminalTabsAppliedByWorktreeId: buildDefaultTerminalTabsAppliedByWorktreeId(snapshot),
     ...buildSleepingAgentSessionData(snapshot),
     ...pickCloseIntents(snapshot)
   }

@@ -4,6 +4,10 @@ import { ORCA_LAYOUT_OWNER_IS_MAIN } from '../../../../../shared/layout-owner-sw
 import { ORCA_BROWSER_BLANK_URL } from '../../../../../shared/constants'
 import type { WorkspaceSessionState } from '../../../../../shared/workspace-session-state-types'
 import { normalizeBrowserHistoryEntries } from '../../../../../shared/workspace-session-browser-history'
+import {
+  backfillWebConversationsFromBrowserHistory,
+  normalizeWebConversationHistoryEntries
+} from '../../../../../shared/workspace-session-web-conversations'
 import { normalizeWorkspaceDocHistoryEntries } from '../../../../../shared/workspace-doc-history'
 import type { AppState } from '../../types'
 import { mirrorWorkspaceFromActivePage, normalizeUrl } from '../browser-page-records'
@@ -169,6 +173,15 @@ export function projectHydratedBrowserSession(
     )
   })()
 
+  const browserUrlHistory = normalizeBrowserHistoryEntries(session.browserUrlHistory ?? [])
+  // Why the backfill sits here and not at the write path: this is the only moment both lists
+  // are in hand, and the conversations the browsing history can still recover are exactly the
+  // ones recorded before the conversation list existed.
+  const webConversationHistory = backfillWebConversationsFromBrowserHistory(
+    normalizeWebConversationHistoryEntries(session.webConversationHistory ?? []),
+    browserUrlHistory
+  )
+
   return {
     browserTabsByWorktree,
     browserPagesByWorkspace,
@@ -181,7 +194,8 @@ export function projectHydratedBrowserSession(
     browserCertificateFailuresByPageId: {},
     browserAnnotationsByPageId: {},
     browserAnnotationMarkerIdsByPageId: {},
-    browserUrlHistory: normalizeBrowserHistoryEntries(session.browserUrlHistory ?? []),
+    browserUrlHistory,
+    webConversationHistory,
     workspaceDocHistory: normalizeWorkspaceDocHistoryEntries(session.workspaceDocHistory ?? []),
     // Why restored before the rows are: a close the host never heard must outlive the relaunch
     // that also restores the row it closed, or the restore silently wins.

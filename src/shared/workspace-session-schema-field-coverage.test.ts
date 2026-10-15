@@ -41,6 +41,7 @@ const PERSISTED_WORKSPACE_SESSION_FIELDS = {
   pairedTerminalTabCloseIntentsByEnvironment: true,
   activeTabTypeByWorktree: true,
   browserUrlHistory: true,
+  webConversationHistory: true,
   workspaceDocHistory: true,
   activeTabIdByWorktree: true,
   unifiedTabs: true,

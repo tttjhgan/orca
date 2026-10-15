@@ -33,7 +33,7 @@ export type AgentSendPopoverTargetMode = {
   id: string
   instanceId: string
   worktreeId: string
-  source: 'diff-notes' | 'browser-annotations'
+  source: 'diff-notes' | 'browser-annotations' | 'web-conversation'
   prompt: string
   label: string
   launchSource: LaunchSource

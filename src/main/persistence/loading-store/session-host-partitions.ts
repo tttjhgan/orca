@@ -10,7 +10,7 @@ import {
 import type { HostWorktreeTarget } from '../../../shared/worktree/host-qualified-identity'
 import { getDefaultWorkspaceSession } from '../../../shared/constants'
 import { pruneLocalTerminalScrollbackBuffers } from '../../../shared/workspace-session-terminal-buffers'
-import { pruneWorkspaceSessionBrowserHistory } from '../../../shared/workspace-session-browser-history'
+import { pruneWorkspaceSessionHistoryLists } from '../../../shared/workspace-session-web-conversations'
 import { withoutRedundantGlobalFields } from '../../../shared/workspace-session-host-field-ownership'
 import { getRepoIdFromWorktreeId } from '../../../shared/worktree/id'
 import { readTerminalScrollbackSnapshotSync } from '../../terminal-scrollback-snapshots'
@@ -225,7 +225,7 @@ export function setHostWorkspaceSession(
   // Why here too: the load-side drop only survives until the next full snapshot write. A renderer
   // or runtime payload that still carries local's globals would re-inject them into this partition.
   const pruned = withoutRedundantGlobalFields(
-    pruneWorkspaceSessionBrowserHistory(
+    pruneWorkspaceSessionHistoryLists(
       pruneLocalTerminalScrollbackBuffers(
         session,
         owner[sessionHostPartitionOperationsContext].runtime.state.repos

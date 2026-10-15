@@ -24,7 +24,8 @@ import type { SessionsBoardCardAvailability } from './sessions-board-card-availa
 
 // The two actions sit over the card, revealed on hover or keyboard focus — the same
 // contract the Agent Session History row uses, so a dense board stays readable.
-const ACTIONS_CLUSTER_CLASS = cn(
+// Exported so the web-conversation card reveals its controls by the same rules.
+export const ACTIONS_CLUSTER_CLASS = cn(
   'absolute right-1.5 top-1.5 flex items-center gap-0.5 transition-opacity',
   'can-hover:pointer-events-none can-hover:opacity-0 [@media(hover:none)]:pointer-events-auto [@media(hover:none)]:opacity-100',
   'group-hover/card:pointer-events-auto group-hover/card:opacity-100',

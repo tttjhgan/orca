@@ -4,6 +4,7 @@ import type {
 } from '../../../shared/workspace-session-state-types'
 import { pruneLocalTerminalScrollbackBuffers } from '../../../shared/workspace-session-terminal-buffers'
 import { normalizeBrowserHistoryEntries } from '../../../shared/workspace-session-browser-history'
+import { normalizeWebConversationHistoryEntries } from '../../../shared/workspace-session-web-conversations'
 import { normalizeWorkspaceDocHistoryEntries } from '../../../shared/workspace-doc-history'
 import {
   buildActiveConnectionIdsAtShutdown,
@@ -19,6 +20,7 @@ import {
 import { withoutStagedBrowserTabs } from './workspace-session-staged-browser-tabs'
 import { buildPersistedUnifiedTabSessionData } from './workspace-session-unified-tabs'
 import { buildLastVisitedAtByWorktreeId } from './workspace-session-focus-recency'
+import { buildDefaultTerminalTabsAppliedByWorktreeId } from './workspace-session-default-terminal-tabs'
 import { buildSleepingAgentSessionData } from './workspace-session-sleeping-agents'
 
 type SessionRelevantField = keyof WorkspaceSessionSnapshot
@@ -171,6 +173,11 @@ export function buildWorkspaceSessionPatch(
   if (changed.has('browserUrlHistory')) {
     patch.browserUrlHistory = normalizeBrowserHistoryEntries(snapshot.browserUrlHistory)
   }
+  if (changed.has('webConversationHistory')) {
+    patch.webConversationHistory = normalizeWebConversationHistoryEntries(
+      snapshot.webConversationHistory
+    )
+  }
   if (changed.has('workspaceDocHistory')) {
     patch.workspaceDocHistory = normalizeWorkspaceDocHistoryEntries(snapshot.workspaceDocHistory)
   }
@@ -198,10 +205,7 @@ export function buildWorkspaceSessionPatch(
   }
   if (changed.has('defaultTerminalTabsAppliedByWorktreeId')) {
     patch.defaultTerminalTabsAppliedByWorktreeId =
-      snapshot.defaultTerminalTabsAppliedByWorktreeId &&
-      Object.keys(snapshot.defaultTerminalTabsAppliedByWorktreeId).length > 0
-        ? snapshot.defaultTerminalTabsAppliedByWorktreeId
-        : undefined
+      buildDefaultTerminalTabsAppliedByWorktreeId(snapshot)
   }
   if (changed.has('sleepingAgentSessionsByPaneKey')) {
     patch.sleepingAgentSessionsByPaneKey =

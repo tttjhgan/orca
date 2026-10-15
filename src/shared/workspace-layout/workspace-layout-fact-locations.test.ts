@@ -155,6 +155,13 @@ function populate(loaded: LoadedWorkspaceLayout): LoadedWorkspaceLayout {
   fill(loaded, 'view.markdownFrontmatterVisible', { '/doc.md': true })
   fill(loaded, 'carried.activeConnectionIdsAtShutdown', ['target-1', 'target-2'])
   fill(loaded, 'carried.browserUrlHistory', [{ url: 'a' }, { url: 'b' }])
+  // Why real conversation URLs rather than the placeholders above: the save path prunes this list
+  // to entries still on a registered site's conversation path, so a placeholder would be dropped
+  // and the source would read as ineffective.
+  fill(loaded, 'carried.webConversationHistory', [
+    { url: 'https://chatgpt.com/c/abc', title: 'one' },
+    { url: 'https://chat.deepseek.com/a/chat/s/def', title: 'two' }
+  ])
   fill(loaded, 'carried.workspaceDocHistory', [{ path: 'a' }, { path: 'b' }])
   fill(loaded, 'carried.clientHostedBrowserCloseIntentsByEnvironment', {
     env: ['page-1', 'page-2']

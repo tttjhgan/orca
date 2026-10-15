@@ -110,6 +110,9 @@ export const WORKSPACE_SESSION_DISPOSITIONS = {
   },
   activeTabId: notApplicableDisposition(32, 'Tab ids are kept.'),
   browserUrlHistory: notApplicableDisposition(31),
+  // Why: the same global browser-history group as its sibling — a conversation URL
+  // records no host, so a WSL project has nothing to carry for it.
+  webConversationHistory: notApplicableDisposition(31),
   workspaceDocHistory: moveDisposition(30),
   activeConnectionIdsAtShutdown: notApplicableDisposition(60),
   clientHostedBrowserCloseIntentsByEnvironment: moveDisposition(29),
