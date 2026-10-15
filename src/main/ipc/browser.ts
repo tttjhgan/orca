@@ -13,6 +13,7 @@ import {
   registerBrowserGrabHandlers,
   resetGrabModeState
 } from './browser-grab-ipc'
+import { registerBrowserPageTextHandlers } from './browser-page-text-ipc'
 import { registerBrowserSessionProfileHandlers } from './browser-session-profile-ipc'
 import type { BrowserCertificateProceedResult } from '../../shared/browser-workspace-types'
 import {
@@ -239,6 +240,12 @@ export function registerBrowserHandlers(): void {
   registerBrowserGuestViewHandlers()
 
   registerBrowserGrabHandlers()
+
+  // --- Browser Page Text IPC ---
+
+  registerBrowserPageTextHandlers()
+
+  // --- Browser Session Profile IPC ---
 
   registerBrowserSessionProfileHandlers()
 }

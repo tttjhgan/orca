@@ -14,6 +14,7 @@ const {
   setAnnotationViewportBridgeMock,
   openDevToolsMock,
   setViewportOverrideMock,
+  readPageTextMock,
   previewAuthoritySpy,
   registrationWaitSpy
 } = vi.hoisted(() => ({
@@ -28,6 +29,9 @@ const {
   setAnnotationViewportBridgeMock: vi.fn().mockResolvedValue(true),
   openDevToolsMock: vi.fn().mockResolvedValue(true),
   setViewportOverrideMock: vi.fn().mockResolvedValue(true),
+  // Why null and not a page: several cases here are about which guest a tool is driven against, and
+  // an unreadable answer is the one that keeps the channel's own result out of the assertion.
+  readPageTextMock: vi.fn().mockResolvedValue(null),
   previewAuthoritySpy: vi.fn(),
   registrationWaitSpy: vi.fn()
 }))
@@ -56,6 +60,7 @@ vi.mock('../browser/browser-manager', () => ({
     setAnnotationViewportBridge: setAnnotationViewportBridgeMock,
     openDevTools: openDevToolsMock,
     setViewportOverride: setViewportOverrideMock,
+    readPageText: readPageTextMock,
     cancelDownload: vi.fn()
   }
 }))
@@ -109,7 +114,10 @@ const TOOL_CHANNELS = [
   'browser:cancelGrab',
   'browser:captureSelectionScreenshot',
   'browser:extractHoverPayload',
-  'browser:setAnnotationViewportBridge'
+  'browser:setAnnotationViewportBridge',
+  // Why a tool: it reads the document the reader is looking at, and the text belongs to whoever
+  // holds that document — a preview included.
+  'browser:readPageText'
 ]
 
 const BROWSER_PAGE_CHANNELS = [
@@ -268,7 +276,8 @@ const GUEST_RECEIVING_MOCKS = [
   awaitGrabSelectionMock,
   captureSelectionScreenshotMock,
   extractHoverPayloadMock,
-  setAnnotationViewportBridgeMock
+  setAnnotationViewportBridgeMock,
+  readPageTextMock
 ]
 
 beforeEach(() => {
@@ -481,6 +490,38 @@ describe('doc preview tool authorization', () => {
     await expect(pending).resolves.toEqual({ ok: true })
     expect(setGrabModeMock).not.toHaveBeenCalled()
     expect(vi.mocked(browserManager.unregisterGuest)).toHaveBeenCalledWith('browser-page-1')
+  })
+
+  // Why here and not in a file of its own: this channel's whole door is the guest authority, and
+  // this file already stands a real guest up behind it.
+  it('answers the reader with the page text the tool read', async () => {
+    // Why a bare object and no cast: the mocked manager takes whatever this file hands it, and the
+    // claim is about identity — that the tool was given this guest and no other.
+    const guest = { isDestroyed: () => false }
+    const page = {
+      url: 'https://chatgpt.com/c/abc',
+      title: 'Postgres migration plan',
+      text: 'roll the deployment back first',
+      truncated: false
+    }
+    getAuthorizedGuestMock.mockReturnValue(guest)
+    readPageTextMock.mockResolvedValue(page)
+    const handler = registeredHandlers().get('browser:readPageText')
+
+    await expect(
+      handler?.(trustedSender(HOST_RENDERER_ID), { browserPageId: 'browser-page-1' })
+    ).resolves.toEqual({ ok: true, page })
+    expect(readPageTextMock).toHaveBeenCalledWith('browser-page-1', guest)
+  })
+
+  it('answers unreadable rather than attaching a page that reported nothing', async () => {
+    getAuthorizedGuestMock.mockReturnValue({ isDestroyed: () => false })
+    readPageTextMock.mockResolvedValue(null)
+    const handler = registeredHandlers().get('browser:readPageText')
+
+    await expect(
+      handler?.(trustedSender(HOST_RENDERER_ID), { browserPageId: 'browser-page-1' })
+    ).resolves.toEqual({ ok: false, reason: 'unavailable' })
   })
 
   // An open document must not answer for a browsing page ID.

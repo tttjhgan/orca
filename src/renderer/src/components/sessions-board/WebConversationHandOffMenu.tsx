@@ -1,10 +1,12 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
-import { Send } from 'lucide-react'
+import { Loader2, Paperclip, Send, X } from 'lucide-react'
 import { toast } from 'sonner'
 import { Button } from '@/components/ui/button'
 import {
   DropdownMenu,
   DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuSeparator,
   DropdownMenuTrigger
 } from '@/components/ui/dropdown-menu'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip'
@@ -16,6 +18,10 @@ import type { BrowserHistoryEntry } from '../../../../shared/browser-workspace-t
 import { webConversationIdentity } from '../../../../shared/web-conversation-sites'
 import { ActionButton } from './SessionsBoardSessionActions'
 import { formatWebConversationAgentPrompt } from './web-conversation-agent-prompt'
+import {
+  useWebConversationPageText,
+  webConversationPageTextFailureMessage
+} from './web-conversation-page-text'
 
 /**
  * 「一键交给 Agent」 for a web conversation: the card's send control, and the picker it opens.
@@ -41,7 +47,17 @@ export function WebConversationHandOffMenu({
     (s) => (worktreeId ? s.activeGroupIdByWorktree[worktreeId] : undefined) ?? worktreeId ?? ''
   )
   const [menuOpen, setMenuOpen] = useState(false)
-  const prompt = useMemo(() => formatWebConversationAgentPrompt(entry), [entry])
+  const {
+    page: pageShowingConversation,
+    outcome,
+    attach,
+    detach
+  } = useWebConversationPageText(entry)
+  const attachedText = outcome.status === 'attached' ? outcome.text : null
+  const prompt = useMemo(
+    () => formatWebConversationAgentPrompt(entry, attachedText),
+    [entry, attachedText]
+  )
   // Keyed on the conversation's identity — the same key the list dedupes on — so one conversation is
   // always one send target, and two cards in the board never claim the same one.
   const targetModeId = `web-conversation:${webConversationIdentity(entry.url) || entry.normalizedUrl}`
@@ -50,6 +66,7 @@ export function WebConversationHandOffMenu({
     'sessionsBoard.web.handOffNoWorkspace',
     'No workspace selected to hand off to.'
   )
+  const attachLabel = translate('sessionsBoard.web.attach.label', 'Attach the page text')
 
   const handleOpenChange = useCallback(
     (open: boolean): void => {
@@ -138,6 +155,31 @@ export function WebConversationHandOffMenu({
         onInteractOutside={preventAgentSendTargetOutsideDismiss}
         onPointerDownOutside={preventAgentSendTargetOutsideDismiss}
       >
+        {/* Why above the picker: attaching is something the reader decides before choosing who gets
+            it, and the picker is what the menu is for when they do not. */}
+        {pageShowingConversation ? (
+          <PageTextAttachment
+            testIdPrefix="sessions-board-web-card"
+            label={attachLabel}
+            outcome={outcome}
+            onAttach={attach}
+            onDetach={detach}
+          />
+        ) : (
+          <>
+            <DropdownMenuItem disabled data-testid="sessions-board-web-card-attach">
+              <Paperclip />
+              {attachLabel}
+            </DropdownMenuItem>
+            <p className="px-2 pb-1 text-2xs leading-4 text-muted-foreground">
+              {translate(
+                'sessionsBoard.web.attach.noTab',
+                "Open this conversation in Orca's browser to attach what the page shows."
+              )}
+            </p>
+          </>
+        )}
+        <DropdownMenuSeparator />
         <ReviewNotesSendMenuContent
           worktreeId={worktreeId}
           groupId={groupId}
@@ -150,5 +192,87 @@ export function WebConversationHandOffMenu({
         />
       </DropdownMenuContent>
     </DropdownMenu>
+  )
+}
+
+/**
+ * The attach row and what it becomes: the excerpt the reader is about to hand over, and the way to
+ * take it back.
+ */
+function PageTextAttachment({
+  testIdPrefix,
+  label,
+  outcome,
+  onAttach,
+  onDetach
+}: {
+  testIdPrefix: string
+  label: string
+  outcome: ReturnType<typeof useWebConversationPageText>['outcome']
+  onAttach: () => void
+  onDetach: () => void
+}): React.JSX.Element {
+  if (outcome.status === 'attached') {
+    return (
+      <div
+        className="mx-1 mb-1 rounded-md border border-border/60 bg-muted/40 p-2"
+        data-testid={`${testIdPrefix}-attachment`}
+      >
+        <span className="flex items-center gap-1.5 text-2xs font-medium">
+          <Paperclip className="size-3 shrink-0" />
+          {translate('sessionsBoard.web.attach.attached', 'Page text attached')}
+          {outcome.text.truncated
+            ? translate(
+                'sessionsBoard.web.attach.attachedTruncated',
+                ' (beginning and end; the middle was left out)'
+              )
+            : null}
+        </span>
+        {/* Why an excerpt and not the whole text: the point is to show *what* is going, not to
+            re-render a transcript inside a menu. */}
+        <p className="mt-1 line-clamp-3 text-2xs leading-4 text-muted-foreground">
+          {outcome.text.text.slice(0, 240)}
+        </p>
+        <Button
+          type="button"
+          variant="ghost"
+          size="xs"
+          className="mt-1"
+          onClick={onDetach}
+          data-testid={`${testIdPrefix}-attach-remove`}
+        >
+          <X className="size-3" />
+          {translate('sessionsBoard.web.attach.remove', 'Remove the page text')}
+        </Button>
+      </div>
+    )
+  }
+
+  return (
+    <>
+      <DropdownMenuItem
+        data-testid={`${testIdPrefix}-attach`}
+        disabled={outcome.status === 'reading'}
+        // Why preventDefault: reading a page must not close the picker the reader is about to pick
+        // an agent from.
+        onSelect={(event) => {
+          event.preventDefault()
+          onAttach()
+        }}
+      >
+        {outcome.status === 'reading' ? <Loader2 className="animate-spin" /> : <Paperclip />}
+        {outcome.status === 'reading'
+          ? translate('sessionsBoard.web.attach.reading', 'Reading the page…')
+          : label}
+      </DropdownMenuItem>
+      {outcome.status === 'failed' ? (
+        <p
+          className="px-2 pb-1 text-2xs leading-4 text-destructive"
+          data-testid={`${testIdPrefix}-attach-error`}
+        >
+          {webConversationPageTextFailureMessage(outcome.reason)}
+        </p>
+      ) : null}
+    </>
   )
 }

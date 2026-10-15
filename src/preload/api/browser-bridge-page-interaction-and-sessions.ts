@@ -101,6 +101,8 @@ export const browserPageInteractionAndSessionsApi = {
   }) => ipcRenderer.invoke('browser:captureSelectionScreenshot', args),
   extractHoverPayload: (args: { browserPageId: string }) =>
     ipcRenderer.invoke('browser:extractHoverPayload', args),
+  readPageText: (args: { browserPageId: string }) =>
+    ipcRenderer.invoke('browser:readPageText', args),
   onGrabModeToggle: (
     callback: (browserPageId: string, intent: GrabIntent) => void
   ): (() => void) => {

@@ -41,6 +41,10 @@ import type {
   GrabIntent
 } from '../../shared/browser-grab-types'
 import type {
+  BrowserReadPageTextArgs,
+  BrowserReadPageTextResult
+} from '../../shared/browser-page-text'
+import type {
   BrowserContextMenuDismissedEvent,
   BrowserContextMenuRequestedEvent,
   BrowserDownloadFinishedEvent,
@@ -181,6 +185,8 @@ export type BrowserApi = {
     args: BrowserCaptureSelectionScreenshotArgs
   ) => Promise<BrowserCaptureSelectionScreenshotResult>
   extractHoverPayload: (args: BrowserExtractHoverArgs) => Promise<BrowserExtractHoverResult>
+  /** Reads the guest's readable text for a hand-off; the guest must be one this sender may act on. */
+  readPageText: (args: BrowserReadPageTextArgs) => Promise<BrowserReadPageTextResult>
   onGrabModeToggle: (callback: (browserPageId: string, intent: GrabIntent) => void) => () => void
   onGrabActionShortcut: (
     callback: (args: { browserPageId: string; key: 'c' | 's' }) => void

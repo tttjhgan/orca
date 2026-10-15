@@ -57,4 +57,48 @@ describe('formatWebConversationAgentPrompt', () => {
     expect(prompt).not.toContain('<')
     expect(prompt.trimEnd().endsWith('.')).toBe(true)
   })
+
+  describe('with the page text attached', () => {
+    const pageText = {
+      url: 'https://chat.deepseek.com/a/chat/s/abc',
+      title: 'Postgres migration plan',
+      text: 'Assistant: use a two-step migration.',
+      truncated: false
+    }
+
+    it('carries the page’s own words into the prompt', () => {
+      const prompt = formatWebConversationAgentPrompt(entry(), pageText)
+
+      expect(prompt).toContain('Assistant: use a two-step migration.')
+      expect(prompt).toContain('https://chat.deepseek.com/a/chat/s/abc')
+    })
+
+    it('stops telling the agent to go and read the page', () => {
+      // Why this is the point of attaching at all: an agent's own browser session is not the one
+      // that is logged in, so sending it to the URL again would summarize a different page.
+      const prompt = formatWebConversationAgentPrompt(entry(), pageText)
+
+      expect(prompt).not.toContain('ORCA snapshot --json')
+      expect(prompt).not.toContain('ORCA goto')
+    })
+
+    it('says what was left out when the text was long enough to be cut', () => {
+      const prompt = formatWebConversationAgentPrompt(entry(), { ...pageText, truncated: true })
+
+      expect(prompt).toContain('left out')
+    })
+
+    it('still asks for the conclusion, so the hand-off works without further editing', () => {
+      expect(formatWebConversationAgentPrompt(entry(), pageText)).toContain(
+        'Summarize its conclusion'
+      )
+    })
+
+    it('falls back to the reading instruction when the page had no text', () => {
+      // A page that reported nothing readable is not an attachment; the agent is told to read it.
+      const prompt = formatWebConversationAgentPrompt(entry(), { ...pageText, text: '' })
+
+      expect(prompt).toContain('ORCA snapshot --json')
+    })
+  })
 })
