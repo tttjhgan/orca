@@ -12,6 +12,7 @@ import type { AppState } from '../store'
 import type { OpenFile } from '../store/slices/editor'
 import { buildPersistedUnifiedTabSessionData } from './workspace-session-unified-tabs'
 import { buildLastVisitedAtByWorktreeId } from './workspace-session-focus-recency'
+import { buildDefaultTerminalTabsAppliedByWorktreeId } from './workspace-session-default-terminal-tabs'
 import { buildSleepingAgentSessionData } from './workspace-session-sleeping-agents'
 import { buildActiveConnectionIdsAtShutdown } from './workspace-session-reconnect-targets'
 import { withoutStagedBrowserTabs } from './workspace-session-staged-browser-tabs'
@@ -336,11 +337,7 @@ export function buildWorkspaceSessionPayload(
     remoteSessionIdsByTabId: terminalSessionData.remoteSessionIdsByTabId,
     // Why: omit when empty so builds that never stamped focus-recency don't bloat the payload. See docs/cmd-j-empty-query-ordering.md.
     lastVisitedAtByWorktreeId: buildLastVisitedAtByWorktreeId(snapshot),
-    defaultTerminalTabsAppliedByWorktreeId:
-      snapshot.defaultTerminalTabsAppliedByWorktreeId &&
-      Object.keys(snapshot.defaultTerminalTabsAppliedByWorktreeId).length > 0
-        ? snapshot.defaultTerminalTabsAppliedByWorktreeId
-        : undefined,
+    defaultTerminalTabsAppliedByWorktreeId: buildDefaultTerminalTabsAppliedByWorktreeId(snapshot),
     ...buildSleepingAgentSessionData(snapshot),
     // Why unconditional rather than omit-when-empty: a full write replaces the persisted object,
     // so an emptied map has to be written as empty or the last replay never sticks.

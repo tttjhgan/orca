@@ -20,6 +20,7 @@ import {
 import { withoutStagedBrowserTabs } from './workspace-session-staged-browser-tabs'
 import { buildPersistedUnifiedTabSessionData } from './workspace-session-unified-tabs'
 import { buildLastVisitedAtByWorktreeId } from './workspace-session-focus-recency'
+import { buildDefaultTerminalTabsAppliedByWorktreeId } from './workspace-session-default-terminal-tabs'
 import { buildSleepingAgentSessionData } from './workspace-session-sleeping-agents'
 
 type SessionRelevantField = keyof WorkspaceSessionSnapshot
@@ -200,10 +201,7 @@ export function buildWorkspaceSessionPatch(
   }
   if (changed.has('defaultTerminalTabsAppliedByWorktreeId')) {
     patch.defaultTerminalTabsAppliedByWorktreeId =
-      snapshot.defaultTerminalTabsAppliedByWorktreeId &&
-      Object.keys(snapshot.defaultTerminalTabsAppliedByWorktreeId).length > 0
-        ? snapshot.defaultTerminalTabsAppliedByWorktreeId
-        : undefined
+      buildDefaultTerminalTabsAppliedByWorktreeId(snapshot)
   }
   if (changed.has('sleepingAgentSessionsByPaneKey')) {
     patch.sleepingAgentSessionsByPaneKey =

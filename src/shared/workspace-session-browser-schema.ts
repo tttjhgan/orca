@@ -129,9 +129,9 @@ export const browserHistoryEntriesSchema = salvagingArray(browserHistoryEntrySch
 
 // The same entry shape as the browsing history, put through a different normalizer: this list
 // keeps only conversations and is self-cleaning if the site registry changes.
-export const webConversationHistoryEntriesSchema = salvagingArray(
-  browserHistoryEntrySchema
-).transform((entries) => normalizeWebConversationHistoryEntries(entries))
+export const webConversationEntriesSchema = salvagingArray(browserHistoryEntrySchema).transform(
+  (entries) => normalizeWebConversationHistoryEntries(entries)
+)
 
 // A document identity and nothing else: no url field exists for a grant URL to land in.
 const workspaceDocHistoryEntrySchema = z.object({
