@@ -1,11 +1,12 @@
 // @vitest-environment happy-dom
 
-import { cleanup, fireEvent, render, screen } from '@testing-library/react'
+import { cleanup, fireEvent, render, screen, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { TooltipProvider } from '@/components/ui/tooltip'
 import { useAppStore } from '@/store'
 import type { AiVaultSession } from '../../../../shared/ai-vault-types'
+import type { BrowserHistoryEntry } from '../../../../shared/browser-workspace-types'
 import type { SessionsBoardCardAvailability } from './sessions-board-card-availability'
 import type { SessionsBoardColumn } from './sessions-board-column-model'
 import SessionsBoardPage from './SessionsBoardPage'
@@ -50,6 +51,7 @@ const availabilityMock = vi.mocked(useSessionsBoardCardAvailability)
 const actionsMock = vi.mocked(useSessionsBoardSessionActions)
 const closeSessionsPage = vi.fn()
 let previousClose: () => void
+let previousWebConversationHistory: BrowserHistoryEntry[]
 
 const availability: SessionsBoardCardAvailability = {
   worktreeInfo: { status: 'active', label: 'orca', path: '/repo/orca', worktreeId: 'wt-1' },
@@ -105,6 +107,18 @@ function boardData(overrides: Partial<SessionsBoardData> = {}): SessionsBoardDat
   }
 }
 
+function webEntry(overrides: Partial<BrowserHistoryEntry> = {}): BrowserHistoryEntry {
+  return {
+    url: 'https://chatgpt.com/c/abc',
+    normalizedUrl: 'https://chatgpt.com/c/abc',
+    title: 'Postgres migration plan',
+    faviconUrl: null,
+    lastVisitedAt: Date.now() - 60_000,
+    visitCount: 2,
+    ...overrides
+  }
+}
+
 function renderPage(): void {
   render(
     <TooltipProvider>
@@ -121,7 +135,8 @@ beforeEach(() => {
   jumpToSessionWorkspace.mockReset()
   resumeSessionInTerminal.mockReset()
   previousClose = useAppStore.getState().closeSessionsPage
-  useAppStore.setState({ closeSessionsPage })
+  previousWebConversationHistory = useAppStore.getState().webConversationHistory
+  useAppStore.setState({ closeSessionsPage, webConversationHistory: [] })
   columnMock.mockReturnValue(boardData())
   // Every session on the board resolves, so the plumbing under test is the wiring, not the
   // availability rules — those are `sessions-board-card-availability.test.ts`.
@@ -133,7 +148,10 @@ beforeEach(() => {
 
 afterEach(() => {
   cleanup()
-  useAppStore.setState({ closeSessionsPage: previousClose })
+  useAppStore.setState({
+    closeSessionsPage: previousClose,
+    webConversationHistory: previousWebConversationHistory
+  })
   columnMock.mockReset()
   availabilityMock.mockReset()
   actionsMock.mockReset()
@@ -253,5 +271,112 @@ describe('SessionsBoardPage', () => {
     // Same array identity: cwd matching is keyed on it, so a filtered projection here would
     // rebuild the whole session × workspace pass on every keystroke.
     expect(availabilityMock.mock.calls.at(-1)?.[0]).toBe(scan)
+  })
+})
+
+describe('SessionsBoardPage web conversations', () => {
+  it('renders a site column beside the agent columns', () => {
+    useAppStore.setState({ webConversationHistory: [webEntry()] })
+    renderPage()
+
+    expect(screen.getByTestId('sessions-board-column-claude')).toBeTruthy()
+    expect(screen.getByTestId('sessions-board-web-column-chatgpt')).toBeTruthy()
+    expect(screen.getByText('Postgres migration plan')).toBeTruthy()
+    expect(screen.getByText('ChatGPT')).toBeTruthy()
+  })
+
+  it('is not empty when only a web conversation exists', () => {
+    columnMock.mockReturnValue(boardData({ columns: [], sessions: [] }))
+    useAppStore.setState({ webConversationHistory: [webEntry()] })
+    renderPage()
+
+    expect(screen.queryByText('No agent sessions found on this machine.')).toBeNull()
+    expect(screen.getByTestId('sessions-board-web-column-chatgpt')).toBeTruthy()
+  })
+
+  it('filters the site columns with the same search box', async () => {
+    useAppStore.setState({ webConversationHistory: [webEntry()] })
+    renderPage()
+
+    await userEvent.type(screen.getByLabelText('Search sessions'), 'nothing matches')
+
+    expect(screen.queryByTestId('sessions-board-web-column-chatgpt')).toBeNull()
+  })
+
+  it('collapses a site column without touching the agent columns', async () => {
+    useAppStore.setState({ webConversationHistory: [webEntry()] })
+    renderPage()
+
+    await userEvent.click(screen.getByText('ChatGPT'))
+
+    expect(screen.getByTestId('sessions-board-web-column-collapsed-chatgpt')).toBeTruthy()
+    expect(screen.getByTestId('sessions-board-column-claude')).toBeTruthy()
+  })
+
+  it('keeps a site column independent of an agent column that shares its name', async () => {
+    // Why this is the regression that matters: `kimi` is both a registered site and a CLI agent, so
+    // keying both kinds of column on their bare id made one collapsed set serve two columns —
+    // collapsing the site's column folded the agent's, and the rails could not be toggled apart.
+    columnMock.mockReturnValue(
+      boardData({
+        columns: [{ agent: 'kimi', label: 'Kimi', sessions: [makeSession('kimi', 'k1')] }]
+      })
+    )
+    useAppStore.setState({
+      webConversationHistory: [webEntry({ url: 'https://kimi.com/chat/1' })]
+    })
+    renderPage()
+
+    expect(screen.getByTestId('sessions-board-column-kimi')).toBeTruthy()
+    expect(screen.getByTestId('sessions-board-web-column-kimi')).toBeTruthy()
+
+    // The two columns share a label, so the click is aimed at the site column's own toggle rather
+    // than at the text both of them render.
+    const siteColumn = within(screen.getByTestId('sessions-board-web-column-kimi'))
+    await userEvent.click(siteColumn.getByRole('button', { expanded: true }))
+
+    expect(screen.getByTestId('sessions-board-web-column-collapsed-kimi')).toBeTruthy()
+    expect(screen.getByTestId('sessions-board-column-kimi')).toBeTruthy()
+  })
+
+  it('still shows web conversations while the agent scan is running', () => {
+    columnMock.mockReturnValue(boardData({ columns: [], sessions: [], loading: true }))
+    useAppStore.setState({ webConversationHistory: [webEntry()] })
+    renderPage()
+
+    // The scan is machine-wide and slow; the conversation list is already in the store, so waiting
+    // on the scan would hide history the board already has.
+    expect(screen.getByTestId('sessions-board-web-column-chatgpt')).toBeTruthy()
+  })
+
+  it('still shows web conversations when the agent scan fails', () => {
+    columnMock.mockReturnValue(boardData({ columns: [], sessions: [], error: 'host unreachable' }))
+    useAppStore.setState({ webConversationHistory: [webEntry()] })
+    renderPage()
+
+    // The failure is the scan's, not the browsing history's: the notice says so, and the site
+    // columns stay reachable underneath it.
+    expect(screen.getByText(/session scan failed/)).toBeTruthy()
+    expect(screen.getByTestId('sessions-board-web-column-chatgpt')).toBeTruthy()
+  })
+
+  it('offers a new chat on every registered site from the header', async () => {
+    columnMock.mockReturnValue(boardData({ columns: [], sessions: [] }))
+    renderPage()
+
+    await userEvent.click(screen.getByTestId('sessions-board-new-web-conversation'))
+
+    // The menu is the only entry point for a site that has never been visited — which is exactly
+    // the site a new chat is for — so it lists the registry rather than the history.
+    expect(screen.getByTestId('sessions-board-new-web-conversation-chatgpt')).toBeTruthy()
+    expect(screen.getByTestId('sessions-board-new-web-conversation-deepseek')).toBeTruthy()
+    expect(screen.getByTestId('sessions-board-new-web-conversation-kimi')).toBeTruthy()
+  })
+
+  it('offers the same thing from a site column’s own header', () => {
+    useAppStore.setState({ webConversationHistory: [webEntry()] })
+    renderPage()
+
+    expect(screen.getByTestId('sessions-board-web-column-new-chatgpt')).toBeTruthy()
   })
 })

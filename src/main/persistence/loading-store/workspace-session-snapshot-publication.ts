@@ -4,7 +4,7 @@ import { sanitizeWorkspaceSessionTerminalRetirements } from '../../runtime/mobil
 import { LOCAL_EXECUTION_HOST_ID, type ExecutionHostId } from '../../../shared/execution-host'
 import { setMigrationUnsupportedPty } from '../../agent-hooks/migration-unsupported-pty-state'
 import { pruneLocalTerminalScrollbackBuffers } from '../../../shared/workspace-session-terminal-buffers'
-import { pruneWorkspaceSessionBrowserHistory } from '../../../shared/workspace-session-browser-history'
+import { pruneWorkspaceSessionHistoryLists } from '../../../shared/workspace-session-web-conversations'
 import { migrateWorkspaceSessionTerminalScrollbackSnapshots } from '../../terminal-scrollback-snapshots'
 import {
   deleteRemovedTerminalScrollbackSnapshotsAsync,
@@ -43,7 +43,7 @@ export function setLocalWorkspaceSession(
   // straight through, so a per-caller guard leaves the quit write erasing runtime-authored rows.
   session = dropClosedTerminalTabs(preserveRuntimeAuthoredWorkspaceSessionFields(session, prior))
   session = sanitizeWorkspaceSessionTerminalRetirements(session, prior)
-  session = pruneWorkspaceSessionBrowserHistory(
+  session = pruneWorkspaceSessionHistoryLists(
     pruneLocalTerminalScrollbackBuffers(session, context.runtime.state.repos)
   )
 

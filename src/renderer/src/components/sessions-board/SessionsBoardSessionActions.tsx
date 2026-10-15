@@ -71,7 +71,7 @@ export function SessionsBoardSessionActions({
  * span is the trigger. The reason also rides on `aria-label`, which keeps it readable to a
  * screen reader and assertable without a hover.
  */
-function ActionButton({
+export function ActionButton({
   testId,
   label,
   disabled,

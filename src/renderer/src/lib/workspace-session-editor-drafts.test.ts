@@ -25,6 +25,7 @@ function createSnapshot(
     remoteBrowserPageHandlesByPageId: {},
     activeBrowserTabIdByWorktree: {},
     browserUrlHistory: [],
+    webConversationHistory: [],
     workspaceDocHistory: [],
     unifiedTabsByWorktree: {},
     groupsByWorktree: {},

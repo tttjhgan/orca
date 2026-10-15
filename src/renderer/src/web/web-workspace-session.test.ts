@@ -91,6 +91,15 @@ describe('sanitizeWebRuntimeWorkspaceSession', () => {
         }
       ],
       activeTabIdByWorktree: { 'repo-1::/worktree': 'stale-terminal-tab' },
+      webConversationHistory: [
+        {
+          url: 'https://chat.deepseek.com/a/chat/s/abc',
+          normalizedUrl: 'https://chat.deepseek.com/a/chat/s/abc',
+          title: 'A conversation',
+          lastVisitedAt: 1,
+          visitCount: 1
+        }
+      ],
       unifiedTabs: {
         'repo-1::/worktree': [
           {
@@ -142,6 +151,7 @@ describe('sanitizeWebRuntimeWorkspaceSession', () => {
       activeFileIdByWorktree: {},
       activeTabTypeByWorktree: {},
       browserUrlHistory: session.browserUrlHistory,
+      webConversationHistory: session.webConversationHistory,
       lastVisitedAtByWorktreeId: session.lastVisitedAtByWorktreeId
     })
     expect(sanitized.remoteSessionIdsByTabId).toBeUndefined()

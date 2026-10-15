@@ -292,6 +292,7 @@ export function getDefaultWorkspaceSession(): WorkspaceSessionState {
     activeFileIdByWorktree: {},
     activeTabTypeByWorktree: {},
     browserUrlHistory: [],
+    webConversationHistory: [],
     defaultTerminalTabsAppliedByWorktreeId: {}
   }
 }

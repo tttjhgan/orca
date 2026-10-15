@@ -22,6 +22,7 @@ function makeSessionState(overrides: Partial<AppState> = {}): AppState {
     'repos',
     'openFiles',
     'browserUrlHistory',
+    'webConversationHistory',
     'workspaceDocHistory'
   ])
   const mapFields = new Set<string>(['sshConnectionStates'])

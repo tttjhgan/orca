@@ -5,6 +5,7 @@
 import { z } from 'zod'
 import type { BrowserWorkspace } from './browser-workspace-types'
 import { normalizeBrowserHistoryEntries } from './workspace-session-browser-history'
+import { normalizeWebConversationHistoryEntries } from './workspace-session-web-conversations'
 import { normalizeWorkspaceDocHistoryEntries } from './workspace-doc-history'
 import { isDocPreviewUrl } from './doc-preview-scheme'
 import { salvagingArray } from './zod-salvage'
@@ -113,7 +114,7 @@ export const browserPageSchema = z.object({
   convertedTo: browserPageConversionOriginSchema
 })
 
-const browserHistoryEntrySchema = z.object({
+export const browserHistoryEntrySchema = z.object({
   url: z.string(),
   normalizedUrl: z.string(),
   title: z.string(),
@@ -124,6 +125,12 @@ const browserHistoryEntrySchema = z.object({
 
 export const browserHistoryEntriesSchema = salvagingArray(browserHistoryEntrySchema).transform(
   (entries) => normalizeBrowserHistoryEntries(entries)
+)
+
+// The same entry shape as the browsing history, put through a different normalizer: this list
+// keeps only conversations and is self-cleaning if the site registry changes.
+export const webConversationEntriesSchema = salvagingArray(browserHistoryEntrySchema).transform(
+  (entries) => normalizeWebConversationHistoryEntries(entries)
 )
 
 // A document identity and nothing else: no url field exists for a grant URL to land in.
