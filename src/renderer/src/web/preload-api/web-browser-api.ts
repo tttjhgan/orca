@@ -1,8 +1,10 @@
 import type { PreloadApi } from '../../../../preload/api-types'
+import type { BrowserReadPageTextResult } from '../../../../shared/browser-page-text'
 import { translate } from '@/i18n/i18n'
 import { noopUnsubscribe } from './web-storage'
 
 export function createBrowserApi(): NonNullable<Partial<PreloadApi>['browser']> {
+  // oxlint-disable-next-line typescript/consistent-type-assertions -- SAFETY: this client implements a subset of the desktop's browser surface and every member it does implement refuses rather than emulates, so skipping conformance here cannot hand the renderer a capability the client lacks. The rule reports the closing cast on this literal's opening brace.
   return {
     registerGuest: () => Promise.resolve(false),
     isGuestRegistered: () => Promise.resolve(false),
@@ -62,6 +64,10 @@ export function createBrowserApi(): NonNullable<Partial<PreloadApi>['browser']> 
           'Hover extraction is unavailable in the web client.'
         )
       }),
+    // Why refused rather than emulated: this client hosts no guest, so there is no page to read —
+    // the reader's own browser is the only place that conversation exists, and nothing here can see it.
+    readPageText: (): Promise<BrowserReadPageTextResult> =>
+      Promise.resolve({ ok: false, reason: 'unavailable' }),
     onGrabModeToggle: () => noopUnsubscribe,
     onGrabActionShortcut: () => noopUnsubscribe,
     sessionListProfiles: () => Promise.resolve([]),

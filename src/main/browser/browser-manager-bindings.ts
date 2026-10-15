@@ -3,9 +3,9 @@ import { setupGuestContextMenu } from './browser-guest-context-menu'
 import { setupGrabShortcutForwarding } from './browser-guest-grab-shortcuts'
 import { setupGuestMouseWheelZoomForwarding } from './browser-guest-wheel-zoom'
 import { setupGuestShortcutForwarding } from './browser-guest-shortcut-forwarding'
-import { BrowserManagerGrab } from './browser-manager-grab'
+import { BrowserManagerPageText } from './browser-manager-page-text'
 
-export abstract class BrowserManagerBindings extends BrowserManagerGrab {
+export abstract class BrowserManagerBindings extends BrowserManagerPageText {
   protected setupContextMenu(browserTabId: string, guest: Electron.WebContents): void {
     this.contextMenuCleanupByTabId.set(
       browserTabId,
